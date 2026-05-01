@@ -1,5 +1,6 @@
 from app.database.database import SessionLocal
 from app.database.user_model import UserDB
+from app.security.jwt_handler import create_access_token
 
 
 def register_user(user):
@@ -36,7 +37,15 @@ def login_user(username: str, password: str):
 
     db.close()
 
-    if user:
-        return {"message": "Login successful"}
+    if not user:
+        raise ValueError("Invalid credentials")
 
-    raise ValueError("Invalid credentials")
+    token = create_access_token({
+        "sub": user.username,
+        "user_id": user.id
+    })
+
+    return {
+        "access_token": token,
+        "token_type": "bearer"
+    }

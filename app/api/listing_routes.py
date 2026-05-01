@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from app.models.listing import Listing
 from app.services.listing_service import (
     create_listing,
@@ -6,12 +6,16 @@ from app.services.listing_service import (
     search_listings
 )
 from fastapi import HTTPException
+from app.security.auth_dependency import get_current_user
 
 router = APIRouter()
 
 
 @router.post("/listings")
-def create_new_listing(listing: Listing):
+def create_new_listing(
+    listing: Listing,
+    current_user=Depends(get_current_user)
+):
     try:
         return create_listing(listing)
     except ValueError as e:

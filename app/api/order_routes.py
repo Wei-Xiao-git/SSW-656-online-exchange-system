@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from app.models.order import Order
 from app.services.order_service import (
     create_order,
@@ -6,12 +6,16 @@ from app.services.order_service import (
     cancel_order
 )
 from fastapi import HTTPException
+from app.security.auth_dependency import get_current_user
 
 router = APIRouter()
 
 
 @router.post("/orders")
-def create_new_order(order: Order):
+def create_new_order(
+    order: Order,
+    current_user=Depends(get_current_user)
+):
     try:
         return create_order(order)
     except ValueError as e:
@@ -24,7 +28,10 @@ def list_orders():
 
 
 @router.delete("/orders/{order_id}")
-def delete_order(order_id: int):
+def delete_order(
+    order_id: int,
+    current_user=Depends(get_current_user)
+):
     try:
         return cancel_order(order_id)
     except ValueError as e:
