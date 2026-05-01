@@ -5,13 +5,17 @@ from app.services.order_service import (
     get_all_orders,
     cancel_order
 )
+from fastapi import HTTPException
 
 router = APIRouter()
 
 
 @router.post("/orders")
 def create_new_order(order: Order):
-    return create_order(order)
+    try:
+        return create_order(order)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 @router.get("/orders")

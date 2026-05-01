@@ -5,13 +5,17 @@ from app.services.listing_service import (
     get_all_listings,
     search_listings
 )
+from fastapi import HTTPException
 
 router = APIRouter()
 
 
 @router.post("/listings")
 def create_new_listing(listing: Listing):
-    return create_listing(listing)
+    try:
+        return create_listing(listing)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 @router.get("/listings")
