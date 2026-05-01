@@ -3,11 +3,11 @@ from app.database.listing_model import ListingDB
 from app.database.user_model import UserDB
 
 
-def create_listing(listing):
+def create_listing(listing, seller_id: int):
     db = SessionLocal()
 
     seller = db.query(UserDB).filter(
-        UserDB.id == listing.seller_id
+        UserDB.id == seller_id
     ).first()
 
     if not seller:
@@ -18,7 +18,7 @@ def create_listing(listing):
         title=listing.title,
         description=listing.description,
         price=listing.price,
-        seller_id=listing.seller_id
+        seller_id=seller_id
     )
 
     db.add(new_listing)

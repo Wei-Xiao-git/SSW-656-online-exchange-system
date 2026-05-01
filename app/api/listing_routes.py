@@ -17,7 +17,10 @@ def create_new_listing(
     current_user=Depends(get_current_user)
 ):
     try:
-        return create_listing(listing)
+        return create_listing(
+            listing,
+            seller_id=current_user["user_id"]
+        )
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 

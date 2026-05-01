@@ -4,11 +4,11 @@ from app.database.user_model import UserDB
 from app.database.listing_model import ListingDB
 
 
-def create_order(order):
+def create_order(order, buyer_id: int):
     db = SessionLocal()
 
     buyer = db.query(UserDB).filter(
-        UserDB.id == order.buyer_id
+        UserDB.id == buyer_id
     ).first()
 
     if not buyer:
@@ -24,7 +24,7 @@ def create_order(order):
         raise ValueError("Listing not found")
 
     new_order = OrderDB(
-        buyer_id=order.buyer_id,
+        buyer_id=buyer_id,
         listing_id=order.listing_id,
         quantity=order.quantity,
         status=order.status
