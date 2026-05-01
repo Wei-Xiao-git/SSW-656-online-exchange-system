@@ -1,20 +1,47 @@
-from app.database.database import fake_listings_db
+from app.database.database import SessionLocal
+from app.database.listing_model import ListingDB
+from app.database.user_model import UserDB
 
 
 def create_listing(listing):
-    fake_listings_db.append(listing)
+    db = SessionLocal()
+
+    seller = db.query(UserDB).filter(
+        UserDB.id == listing.seller_id
+    ).first()
+
+    if not seller:
+        db.close()
+        raise ValueError("Seller not found")
+
+    new_listing = ListingDB(
+        title=listing.title,
+        description=listing.description,
+        price=listing.price,
+        seller_id=listing.seller_id
+    )
+
+    db.add(new_listing)
+    db.commit()
+    db.close()
+
     return {"message": "Listing created successfully"}
 
 
 def get_all_listings():
-    return fake_listings_db
+    db = SessionLocal()
+    listings = db.query(ListingDB).all()
+    db.close()
+    return listings
 
 
 def search_listings(keyword: str):
-    results = []
+    db = SessionLocal()
 
-    for listing in fake_listings_db:
-        if keyword.lower() in listing.title.lower():
-            results.append(listing)
+    results = db.query(ListingDB).filter(
+        ListingDB.title.contains(keyword)
+    ).all()
+
+    db.close()
 
     return results
