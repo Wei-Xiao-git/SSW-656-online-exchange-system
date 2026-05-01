@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from app.models.user import User
 from app.services.auth_service import register_user, login_user
-
+from app.models.login import LoginRequest
 router = APIRouter()
 
 
@@ -14,8 +14,11 @@ def register(user: User):
 
 
 @router.post("/login")
-def login(username: str, password: str):
+def login(request: LoginRequest):
     try:
-        return login_user(username, password)
+        return login_user(
+            request.username,
+            request.password
+        )
     except ValueError as e:
         raise HTTPException(status_code=401, detail=str(e))

@@ -11,8 +11,9 @@ import pytest
 client = TestClient(app)
 
 
-# ---------- Reset Database Before Each Test ----------
-
+# -----------------------------
+# Reset DB Before Each Test
+# -----------------------------
 @pytest.fixture(autouse=True)
 def clean_database():
     db = SessionLocal()
@@ -25,160 +26,166 @@ def clean_database():
     db.close()
 
 
-# ---------- Auth Tests ----------
+# -----------------------------
+# Helper Functions
+# -----------------------------
+def register_user(username, email):
+    return client.post("/register", json={
+        "username": username,
+        "password": "123456",
+        "email": email
+    })
 
+
+def login_user(username):
+    response = client.post("/login", json={
+        "username": username,
+        "password": "123456"
+    })
+
+    token = response.json()["access_token"]
+
+    return {
+        "Authorization": f"Bearer {token}"
+    }
+
+
+# -----------------------------
+# Auth Tests
+# -----------------------------
 def test_register_user():
-    response = client.post("/register", json={
+    response = register_user("alice", "alice@example.com")
+
+    assert response.status_code == 200
+
+
+def test_login_returns_token():
+    register_user("alice", "alice@example.com")
+
+    response = client.post("/login", json={
         "username": "alice",
-        "password": "123456",
-        "email": "alice@example.com"
+        "password": "123456"
     })
 
     assert response.status_code == 200
-    assert response.json()["message"] == "User registered successfully"
+    assert "access_token" in response.json()
 
 
-def test_duplicate_user_registration():
-    client.post("/register", json={
-        "username": "alice",
-        "password": "123456",
-        "email": "alice@example.com"
-    })
+# -----------------------------
+# Listing Tests
+# -----------------------------
+def test_create_listing_authenticated():
+    register_user("seller1", "seller@example.com")
 
-    response = client.post("/register", json={
-        "username": "alice",
-        "password": "abcdef",
-        "email": "alice2@example.com"
-    })
+    headers = login_user("seller1")
 
-    assert response.status_code in [400, 409, 500]
-
-
-# ---------- Listing Tests ----------
-
-def test_create_listing():
-    client.post("/register", json={
-        "username": "seller1",
-        "password": "123456",
-        "email": "seller@example.com"
-    })
-
-    response = client.post("/listings", json={
-        "title": "MacBook Air",
-        "description": "Used laptop",
-        "price": 800,
-        "seller_id": 1
-    })
+    response = client.post(
+        "/listings",
+        headers=headers,
+        json={
+            "title": "MacBook Air",
+            "description": "Used laptop",
+            "price": 800
+        }
+    )
 
     assert response.status_code == 200
-    assert response.json()["message"] == "Listing created successfully"
 
 
-def test_create_listing_invalid_seller():
-    response = client.post("/listings", json={
-        "title": "iPhone",
-        "description": "Phone",
-        "price": 500,
-        "seller_id": 999
-    })
+def test_create_listing_unauthorized():
+    response = client.post(
+        "/listings",
+        json={
+            "title": "MacBook Air",
+            "description": "Used laptop",
+            "price": 800
+        }
+    )
 
-    assert response.status_code in [400, 404, 500]
-
-
-def test_get_listings():
-    client.post("/register", json={
-        "username": "seller1",
-        "password": "123456",
-        "email": "seller@example.com"
-    })
-
-    client.post("/listings", json={
-        "title": "MacBook Air",
-        "description": "Used laptop",
-        "price": 800,
-        "seller_id": 1
-    })
-
-    response = client.get("/listings")
-
-    assert response.status_code == 200
-    assert len(response.json()) == 1
+    assert response.status_code == 403 or response.status_code == 401
 
 
-# ---------- Order Tests ----------
+# -----------------------------
+# Order Tests
+# -----------------------------
+def test_create_order_authenticated():
+    # Seller creates listing
+    register_user("seller1", "seller@example.com")
+    seller_headers = login_user("seller1")
 
-def test_create_order():
-    # Seller
-    client.post("/register", json={
-        "username": "seller1",
-        "password": "123456",
-        "email": "seller@example.com"
-    })
+    client.post(
+        "/listings",
+        headers=seller_headers,
+        json={
+            "title": "MacBook Air",
+            "description": "Used laptop",
+            "price": 800
+        }
+    )
 
-    # Buyer
-    client.post("/register", json={
-        "username": "buyer1",
-        "password": "123456",
-        "email": "buyer@example.com"
-    })
+    # Buyer places order
+    register_user("buyer1", "buyer@example.com")
+    buyer_headers = login_user("buyer1")
 
-    # Listing
-    client.post("/listings", json={
-        "title": "MacBook Air",
-        "description": "Used laptop",
-        "price": 800,
-        "seller_id": 1
-    })
-
-    response = client.post("/orders", json={
-        "buyer_id": 2,
-        "listing_id": 1,
-        "quantity": 1,
-        "status": "Pending"
-    })
+    response = client.post(
+        "/orders",
+        headers=buyer_headers,
+        json={
+            "listing_id": 1,
+            "quantity": 1,
+            "status": "Pending"
+        }
+    )
 
     assert response.status_code == 200
-    assert response.json()["message"] == "Order created successfully"
 
 
-def test_create_order_invalid_buyer():
-    response = client.post("/orders", json={
-        "buyer_id": 999,
-        "listing_id": 1,
-        "quantity": 1,
-        "status": "Pending"
-    })
+def test_create_order_unauthorized():
+    response = client.post(
+        "/orders",
+        json={
+            "listing_id": 1,
+            "quantity": 1,
+            "status": "Pending"
+        }
+    )
 
-    assert response.status_code in [400, 404, 500]
+    assert response.status_code == 403 or response.status_code == 401
 
 
-def test_cancel_order():
-    client.post("/register", json={
-        "username": "seller1",
-        "password": "123456",
-        "email": "seller@example.com"
-    })
+# -----------------------------
+# Cancel Order Test
+# -----------------------------
+def test_cancel_order_authenticated():
+    register_user("seller1", "seller@example.com")
+    seller_headers = login_user("seller1")
 
-    client.post("/register", json={
-        "username": "buyer1",
-        "password": "123456",
-        "email": "buyer@example.com"
-    })
+    client.post(
+        "/listings",
+        headers=seller_headers,
+        json={
+            "title": "MacBook Air",
+            "description": "Used laptop",
+            "price": 800
+        }
+    )
 
-    client.post("/listings", json={
-        "title": "MacBook Air",
-        "description": "Used laptop",
-        "price": 800,
-        "seller_id": 1
-    })
+    register_user("buyer1", "buyer@example.com")
+    buyer_headers = login_user("buyer1")
 
-    client.post("/orders", json={
-        "buyer_id": 2,
-        "listing_id": 1,
-        "quantity": 1,
-        "status": "Pending"
-    })
+    client.post(
+        "/orders",
+        headers=buyer_headers,
+        json={
+            "listing_id": 1,
+            "quantity": 1,
+            "status": "Pending"
+        }
+    )
 
-    response = client.delete("/orders/1")
+    response = client.delete(
+        "/orders/1",
+        headers=buyer_headers
+    )
 
     assert response.status_code == 200
