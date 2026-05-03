@@ -7,6 +7,7 @@ from app.services.listing_service import (
 )
 from fastapi import HTTPException
 from app.security.auth_dependency import get_current_user
+from app.security.role_dependency import require_role
 
 router = APIRouter()
 
@@ -14,7 +15,7 @@ router = APIRouter()
 @router.post("/listings")
 def create_new_listing(
     listing: Listing,
-    current_user=Depends(get_current_user)
+    current_user=Depends(require_role("seller", "admin"))
 ):
     try:
         return create_listing(

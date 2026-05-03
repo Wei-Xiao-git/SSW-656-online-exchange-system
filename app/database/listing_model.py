@@ -11,7 +11,9 @@ class ListingDB(Base):
     description = Column(String, nullable=False)
     price = Column(Float, nullable=False)
 
-    seller_id = Column(Integer, ForeignKey("users.id"))
+    seller_id = Column(Integer, ForeignKey("users.id"), nullable=False)
 
-    seller = relationship("UserDB", back_populates="listings")
-    orders = relationship("OrderDB", back_populates="listing")
+    seller = relationship("UserDB", back_populates="listings",
+                          cascade="all, delete")
+    orders = relationship("OrderDB", back_populates="listing",
+                          cascade="all, delete")

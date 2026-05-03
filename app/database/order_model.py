@@ -8,8 +8,8 @@ class OrderDB(Base):
 
     id = Column(Integer, primary_key=True, index=True)
 
-    buyer_id = Column(Integer, ForeignKey("users.id"))
-    listing_id = Column(Integer, ForeignKey("listings.id"))
+    buyer_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    listing_id = Column(Integer, ForeignKey("listings.id"), nullable=False)
 
     quantity = Column(Integer, nullable=False)
     status = Column(String, default="Pending")

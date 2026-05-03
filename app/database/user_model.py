@@ -10,6 +10,9 @@ class UserDB(Base):
     username = Column(String, unique=True, nullable=False)
     password = Column(String, nullable=False)
     email = Column(String, unique=True, nullable=False)
+    role = Column(String, nullable=False, default="buyer")
 
-    listings = relationship("ListingDB", back_populates="seller")
-    orders = relationship("OrderDB", back_populates="buyer")
+    listings = relationship("ListingDB", back_populates="seller",
+                            cascade="all, delete")
+    orders = relationship("OrderDB", back_populates="buyer",
+                          cascade="all, delete")

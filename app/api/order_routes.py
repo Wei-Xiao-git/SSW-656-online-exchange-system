@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException, Depends
 from app.models.order import Order
+from app.security.role_dependency import require_role
 from app.services.order_service import (
     create_order,
     get_all_orders,
@@ -14,7 +15,7 @@ router = APIRouter()
 @router.post("/orders")
 def create_new_order(
     order: Order,
-    current_user=Depends(get_current_user)
+    current_user=Depends(require_role("buyer", "admin"))
 ):
     try:
         return create_order(

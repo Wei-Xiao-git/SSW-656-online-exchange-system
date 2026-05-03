@@ -17,7 +17,8 @@ def register_user(user):
     new_user = UserDB(
         username=user.username,
         password=user.password,
-        email=user.email
+        email=user.email,
+        role=user.role
     )
 
     db.add(new_user)
@@ -42,7 +43,8 @@ def login_user(username: str, password: str):
 
     token = create_access_token({
         "sub": user.username,
-        "user_id": user.id
+        "user_id": user.id,
+        "role": user.role
     })
 
     return {
