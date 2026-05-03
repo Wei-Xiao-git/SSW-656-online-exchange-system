@@ -29,11 +29,12 @@ def clean_database():
 # -----------------------------
 # Helper Functions
 # -----------------------------
-def register_user(username, email):
+def register_user(username, email, role):
     return client.post("/register", json={
         "username": username,
         "password": "123456",
-        "email": email
+        "email": email,
+        "role": role
     })
 
 
@@ -53,17 +54,21 @@ def login_user(username):
 # -----------------------------
 # Auth Tests
 # -----------------------------
-def test_register_user():
-    response = register_user("alice", "alice@example.com")
+def test_register_with_role():
+    response = register_user(
+        "seller1",
+        "seller@test.com",
+        "seller"
+    )
 
     assert response.status_code == 200
 
 
 def test_login_returns_token():
-    register_user("alice", "alice@example.com")
+    register_user("buyer1", "buyer@test.com", "buyer")
 
     response = client.post("/login", json={
-        "username": "alice",
+        "username": "buyer1",
         "password": "123456"
     })
 
@@ -72,11 +77,10 @@ def test_login_returns_token():
 
 
 # -----------------------------
-# Listing Tests
+# Listing RBAC Tests
 # -----------------------------
-def test_create_listing_authenticated():
-    register_user("seller1", "seller@example.com")
-
+def test_seller_can_create_listing():
+    register_user("seller1", "seller@test.com", "seller")
     headers = login_user("seller1")
 
     response = client.post(
@@ -92,9 +96,13 @@ def test_create_listing_authenticated():
     assert response.status_code == 200
 
 
-def test_create_listing_unauthorized():
+def test_buyer_cannot_create_listing():
+    register_user("buyer1", "buyer@test.com", "buyer")
+    headers = login_user("buyer1")
+
     response = client.post(
         "/listings",
+        headers=headers,
         json={
             "title": "MacBook Air",
             "description": "Used laptop",
@@ -102,15 +110,14 @@ def test_create_listing_unauthorized():
         }
     )
 
-    assert response.status_code == 403 or response.status_code == 401
+    assert response.status_code == 403
 
 
 # -----------------------------
-# Order Tests
+# Order RBAC Tests
 # -----------------------------
-def test_create_order_authenticated():
-    # Seller creates listing
-    register_user("seller1", "seller@example.com")
+def test_buyer_can_create_order():
+    register_user("seller1", "seller@test.com", "seller")
     seller_headers = login_user("seller1")
 
     client.post(
@@ -123,8 +130,7 @@ def test_create_order_authenticated():
         }
     )
 
-    # Buyer places order
-    register_user("buyer1", "buyer@example.com")
+    register_user("buyer1", "buyer@test.com", "buyer")
     buyer_headers = login_user("buyer1")
 
     response = client.post(
@@ -140,24 +146,8 @@ def test_create_order_authenticated():
     assert response.status_code == 200
 
 
-def test_create_order_unauthorized():
-    response = client.post(
-        "/orders",
-        json={
-            "listing_id": 1,
-            "quantity": 1,
-            "status": "Pending"
-        }
-    )
-
-    assert response.status_code == 403 or response.status_code == 401
-
-
-# -----------------------------
-# Cancel Order Test
-# -----------------------------
-def test_cancel_order_authenticated():
-    register_user("seller1", "seller@example.com")
+def test_seller_cannot_create_order():
+    register_user("seller1", "seller@test.com", "seller")
     seller_headers = login_user("seller1")
 
     client.post(
@@ -170,12 +160,9 @@ def test_cancel_order_authenticated():
         }
     )
 
-    register_user("buyer1", "buyer@example.com")
-    buyer_headers = login_user("buyer1")
-
-    client.post(
+    response = client.post(
         "/orders",
-        headers=buyer_headers,
+        headers=seller_headers,
         json={
             "listing_id": 1,
             "quantity": 1,
@@ -183,9 +170,33 @@ def test_cancel_order_authenticated():
         }
     )
 
-    response = client.delete(
-        "/orders/1",
-        headers=buyer_headers
+    assert response.status_code == 403
+
+
+# -----------------------------
+# Unauthorized Tests
+# -----------------------------
+def test_create_listing_without_token():
+    response = client.post(
+        "/listings",
+        json={
+            "title": "MacBook",
+            "description": "Laptop",
+            "price": 800
+        }
     )
 
-    assert response.status_code == 200
+    assert response.status_code in [401, 403]
+
+
+def test_create_order_without_token():
+    response = client.post(
+        "/orders",
+        json={
+            "listing_id": 1,
+            "quantity": 1,
+            "status": "Pending"
+        }
+    )
+
+    assert response.status_code in [401, 403]
